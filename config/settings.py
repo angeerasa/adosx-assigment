@@ -9,6 +9,7 @@ https://docs.djangoproject.com/en/6.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
+import os
 
 from pathlib import Path
 
@@ -48,6 +49,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'tenancy.middleware.CurrentOrgMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -74,11 +76,13 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+DB_ROLE = os.getenv("DB_ROLE")
+DB_ROLE = "app" if len(DB_ROLE) == 0 else DB_ROLE
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'adosx', "USER": 'adosx_owner', "PASSWORD":'adosx_owner',
+        'NAME': 'adosx', "USER": 'adosx_'+DB_ROLE, "PASSWORD":'adosx_'+DB_ROLE,
         'HOST': 'localhost', 'PORT':'5432',
         'CONN_MAX_AGE':0
     }
