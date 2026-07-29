@@ -76,8 +76,11 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-DB_ROLE = os.getenv("DB_ROLE")
-DB_ROLE = "app" if len(DB_ROLE) == 0 else DB_ROLE
+DB_ROLE = os.environ.get("DB_ROLE", "app")
+
+print("=================================================")
+print(DB_ROLE)
+print("=================================================")
 
 DATABASES = {
     'default': {
