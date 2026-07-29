@@ -79,7 +79,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'adosx', "USER": 'adosx_owner', "PASSWORD":'adosx_owner',
-        'HOST': 'localhost', PORT:'5432',
+        'HOST': 'localhost', 'PORT':'5432',
         'CONN_MAX_AGE':0
     }
 }
