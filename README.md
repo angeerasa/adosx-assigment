@@ -45,7 +45,15 @@ python manage.py seed_users
 Remove-Item Env:DB_ROLE
 ```
 
-**4. Run the app.** This step must NOT set `DB_ROLE=owner` --
+**4. Gemini API Key.**  
+***(i)*** Create .env file in the root project folder  
+***(ii)*** Create an API Key for Gemini [easily doable online]  
+***(iii)***
+```dotenv
+GEMINI_API_KEY=your_api_key
+```
+
+**5. Run the app.** This step must NOT set `DB_ROLE=owner` --
 the whole point is that the running app connects as the restricted
 `adosx_app` role:
 
