@@ -1,3 +1,5 @@
+from django.db import connection
+
 
 class CurrentOrgMiddleware:
     def __init__(self, get_response):
