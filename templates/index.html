@@ -1,0 +1,180 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>DealerOS -- Reconciliation Exceptions</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 2rem; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; font-size: 14px; }
+  th { background: #f0f0f0; }
+  .row { display: flex; gap: 1rem; margin-bottom: 1rem; align-items: center; }
+  input, select, button { padding: 6px; }
+  pre { white-space: pre-wrap; background: #f7f7f7; padding: 8px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+{% verbatim %}
+const { useState, useEffect } = React;
+
+function LoginBar({ me, setMe }) {
+  const [username, setUsername] = useState("alice");
+  const [password, setPassword] = useState("alice_pw");
+
+  async function login() {
+    const res = await fetch("/api/login/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setMe({ authenticated: true, ...data });
+    } else {
+      alert("Login failed");
+    }
+  }
+
+  async function logout() {
+    await fetch("/api/logout/", { method: "POST" });
+    setMe({ authenticated: false });
+  }
+
+  if (me.authenticated) {
+    return (
+      <div className="row">
+        <b>Logged in as {me.username} (org {me.org_id})</b>
+        <button onClick={logout}>Log out</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="row">
+      <input value={username} onChange={e => setUsername(e.target.value)} placeholder="username" />
+      <input value={password} onChange={e => setPassword(e.target.value)} placeholder="password" type="password" />
+      <button onClick={login}>Log in</button>
+      <span style={{color:"#666"}}>Demo users: alice/alice-pw (ORG-A), bob/bob-pw (ORG-B)</span>
+    </div>
+  );
+}
+
+function ExceptionsTable() {
+  const [rows, setRows] = useState([]);
+  const [reasonFilter, setReasonFilter] = useState("");
+  const [locationFilter, setLocationFilter] = useState("");
+  const [reasons, setReasons] = useState([]);
+  let timeoutId;
+  async function load() {
+    const params = new URLSearchParams();
+    if (reasonFilter) params.set("reason_code", reasonFilter);
+    if (locationFilter) params.set("location_id", locationFilter);
+    const res = await fetch("/api/exceptions/?" + params.toString());
+    if (res.ok) {
+      const data = await res.json();
+      setRows(data);
+      if(reasons.length == 0) //Angeerasa: added to prevent changing listed reason_codes
+        setReasons([...new Set(data.map(r => r.reason_code))].sort());
+    }
+  }
+
+  useEffect(() => { load(); }, [reasonFilter, locationFilter]);
+
+  return (
+    <div>
+      <div className="row">
+        <label>Reason code:
+          <select value={reasonFilter} onChange={e => setReasonFilter(e.target.value)}>
+            <option value="">(all)</option>
+            {reasons.map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+        </label>
+        <label>Location id: <input onChange={
+            e => {
+                clearTimeout(timeoutId);
+                timeoutId= setTimeout( ()=> setLocationFilter(e.target.value), 2000);
+            } // Angeerasa: initiate search only after 2-second gap!
+        } placeholder="e.g. LOC-101" /></label>
+        <button onClick={load}>Refresh</button>
+      </div>
+      <table>
+        <thead><tr><th>#</th><th>Reason</th><th>Summary</th><th>Record</th><th>Entry</th><th>Location</th></tr></thead>
+        <tbody>
+          {rows.map(r => (
+            <tr key={r.id}>
+              <td>{r.id}</td>
+              <td>{r.reason_code}</td>
+              <td>{r.summary}</td>
+              <td>{r.record_id}</td>
+              <td>{r.entry_id}</td>
+              <td>{r.location_id}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {rows.length === 0 && <p>No exceptions match this filter (or you are not logged in).</p>}
+    </div>
+  );
+}
+
+function AskBox() {
+  const [question, setQuestion] = useState("");
+  const [result, setResult] = useState(null);
+
+  async function ask() {
+    const res = await fetch("/api/ask/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question }),
+    });
+    setResult(await res.json());
+  }
+
+  return (
+    <div style={{marginTop: "2rem"}}>
+      <h3>Ask a question about your org's exceptions</h3>
+      <div className="row">
+        <input style={{flex: 1}} value={question} onChange={e => setQuestion(e.target.value)}
+               placeholder="e.g. how many value mismatches are there?" />
+        <button onClick={ask}>Ask</button>
+      </div>
+      {result && (
+        <div>
+          <p><b>{result.refused ? "Refused: " : "Answer: "}</b>{result.answer}</p>
+          {result.citations && result.citations.length > 0 && (
+            <pre>cited discrepancy ids: {JSON.stringify(result.citations)}</pre>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function App() {
+  const [me, setMe] = useState({ authenticated: false });
+
+  useEffect(() => {
+    fetch("/api/me/").then(r => r.json()).then(setMe);
+  }, []);
+
+  return (
+    <div>
+      <h1>DealerOS -- Reconciliation Exceptions</h1>
+      <LoginBar me={me} setMe={setMe} />
+      {me.authenticated && <ExceptionsTable />}
+      {me.authenticated && <AskBox />}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+
+{% endverbatim %}
+</script>
+</body>
+</html>

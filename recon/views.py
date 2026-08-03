@@ -1,5 +1,7 @@
+import json
+
 from django.contrib.auth import logout, authenticate, login
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
@@ -8,6 +10,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from recon.answer import answer_question
 from recon.models import Discrepancy
 from recon.serializers import DiscrepancySerializer
 
@@ -21,20 +24,27 @@ class DiscrepancyView(generics.ListAPIView):
 
         reason_code = self.request.query_params.get("reason_code")
         location_id = self.request.query_params.get("location_id")
-
-        qs.filter(reason_code=reason_code, location_id=location_id)
+        # print("Angeerasa", reason_code)
+        qs.filter(reason_code=reason_code, location_id=location_id)#Angeerasa Claude gave this line
+        if reason_code:
+            qs = qs.filter(reason_code=reason_code)
+        if location_id:
+            qs = qs.filter(location_id=location_id)
 
         return qs
 #Angeerasa: will implement using OpenAI
-# class AskQuestionView(APIView):
-#     def post(self,request):
-#         q = request.data.get("question","")
-#         ord_id = request.user.org_membership.org_id
-#
-#         result = answer_question(question, ord_id)
-#
-#         return Response(result)
-#
+@method_decorator(csrf_exempt, name="dispatch")
+class AskQuestionView(View):
+    def post(self,request):
+        if not request.user.is_authenticated:
+            return JsonResponse({"error": "authentication required"}, status=401)
+
+        body = json.loads(request.body or "{}")
+        question = body.get("question", "")
+        org_id = request.user.org_membership.org_id
+        result = answer_question(question, org_id)
+        return JsonResponse(result)
+
 @method_decorator(csrf_exempt, name="dispatch")
 class LoginView(View):
     def post(self, request):
